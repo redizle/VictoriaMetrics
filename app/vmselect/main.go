@@ -617,21 +617,13 @@ func handleStaticAndSimpleRequests(w http.ResponseWriter, r *http.Request, path 
 		return true
 	}
 	if strings.HasPrefix(p.Suffix, "static") {
-		prefix := strings.Join([]string{"", p.Prefix, p.AuthToken}, "/")
-		if !strings.HasPrefix(path, prefix) {
-			// authToken is missing in original path, so it was fetched from headers - cut it from prefix
-			prefix, _ = strings.CutSuffix(prefix, p.AuthToken)
-		}
+		prefix := getStaticServerPrefix(p, path)
 		http.StripPrefix(prefix, staticServer).ServeHTTP(w, r)
 		return true
 	}
 	if strings.HasPrefix(p.Suffix, "prometheus/static") {
-		prefix := strings.Join([]string{"", p.Prefix, p.AuthToken}, "/")
-		if !strings.HasPrefix(path, prefix) {
-			// authToken is missing in original path, so it was fetched from headers - cut it from prefix
-			prefix, _ = strings.CutSuffix(prefix, p.AuthToken)
-		}
 		r.URL.Path = strings.Replace(r.URL.Path, "/prometheus/static", "/static", 1)
+		prefix := getStaticServerPrefix(p, path)
 		http.StripPrefix(prefix, staticServer).ServeHTTP(w, r)
 		return true
 	}
@@ -679,12 +671,8 @@ func handleStaticAndSimpleRequests(w http.ResponseWriter, r *http.Request, path 
 			// See https://developer.chrome.com/docs/lighthouse/performance/uses-long-cache-ttl/
 			w.Header().Set("Cache-Control", "max-age=31536000")
 		}
-		prefix := strings.Join([]string{"", p.Prefix, p.AuthToken}, "/")
-		if !strings.HasPrefix(path, prefix) {
-			// authToken is missing in original path, so it was fetched from headers - cut it from prefix
-			prefix, _ = strings.CutSuffix(prefix, p.AuthToken)
-		}
 		r.URL.Path = strings.Replace(r.URL.Path, "/prometheus/vmui/", "/vmui/", 1)
+		prefix := getStaticServerPrefix(p, path)
 		http.StripPrefix(prefix, vmuiFileServer).ServeHTTP(w, r)
 		return true
 	}
@@ -837,6 +825,16 @@ func deleteHandler(startTime time.Time, w http.ResponseWriter, r *http.Request, 
 	default:
 		return false
 	}
+}
+
+// getStaticServerPrefix strips AuthToken from the path, if any
+func getStaticServerPrefix(p *httpserver.Path, path string) string {
+	prefix := strings.Join([]string{"", p.Prefix, p.AuthToken}, "/")
+	if !strings.HasPrefix(path, prefix) {
+		// authToken is missing in the original path, so it was fetched from headers - cut it from prefix
+		prefix, _ = strings.CutSuffix(prefix, p.AuthToken)
+	}
+	return prefix
 }
 
 func isGraphiteTagsPath(path string) bool {
