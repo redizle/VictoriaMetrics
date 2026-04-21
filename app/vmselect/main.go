@@ -70,6 +70,9 @@ var (
 
 	clusternativeListenAddr = flag.String("clusternativeListenAddr", "", "TCP address to listen for requests from other vmselect nodes in multi-level cluster setup. "+
 		"See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multi-level-cluster-setup . Usually :8401 should be set to match default vmstorage port for vmselect. Disabled work if empty")
+
+	enableMultitenancyViaHeaders = flag.Bool("enableMultitenancyViaHeaders", false, "Enables multitenancy via HTTP headers. "+
+		"See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multitenancy-via-headers")
 )
 
 var slowQueries = metrics.NewCounter(`vm_slow_queries_total`)
@@ -280,7 +283,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 		w.WriteHeader(http.StatusNoContent)
 		return true
 	}
-	p, err := httpserver.ParsePath(path, r.Header)
+	p, err := parsePath(path, r.Header)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot parse path %q: %s", path, err)
 		return true
@@ -306,6 +309,13 @@ func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 		// This is not our link
 		return false
 	}
+}
+
+func parsePath(path string, header http.Header) (*httpserver.Path, error) {
+	if *enableMultitenancyViaHeaders {
+		return httpserver.ParsePathAndHeaders(path, header)
+	}
+	return httpserver.ParsePath(path)
 }
 
 //go:embed vmui
@@ -594,7 +604,7 @@ func handleStaticAndSimpleRequests(w http.ResponseWriter, r *http.Request, path 
 		promql.ActiveQueriesHandler(nil, w, r)
 		return true
 	}
-	p, err := httpserver.ParsePath(path, r.Header)
+	p, err := parsePath(path, r.Header)
 	if err != nil {
 		return false
 	}

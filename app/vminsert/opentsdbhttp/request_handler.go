@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/VictoriaMetrics/metrics"
+
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vminsert/netstorage"
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vminsert/relabel"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/auth"
@@ -13,7 +15,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/opentsdbhttp/stream"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/tenantmetrics"
-	"github.com/VictoriaMetrics/metrics"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 // See http://opentsdb.net/docs/build/html/api_http/put.html
 func InsertHandler(req *http.Request) error {
 	path := req.URL.Path
-	p, err := httpserver.ParsePath(path, req.Header)
+	p, err := httpserver.ParsePath(path)
 	if err != nil {
 		return fmt.Errorf("cannot parse path %q: %w", path, err)
 	}

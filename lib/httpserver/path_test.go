@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestParsePathSuccess(t *testing.T) {
+func TestParsePathAndHeadersSuccess(t *testing.T) {
 	f := func(path, headers, prefix, authToken, suffix string) {
 		t.Helper()
 		header := make(http.Header)
@@ -18,7 +18,7 @@ func TestParsePathSuccess(t *testing.T) {
 			parts := strings.Split(h, ":")
 			header.Set(parts[0], parts[1])
 		}
-		p, err := ParsePath(path, header)
+		p, err := ParsePathAndHeaders(path, header)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -66,10 +66,10 @@ func TestParsePathSuccess(t *testing.T) {
 
 }
 
-func TestParsePathFailure(t *testing.T) {
+func TestParsePathAndHeadersFailure(t *testing.T) {
 	f := func(path string) {
 		t.Helper()
-		p, err := ParsePath(path, nil)
+		p, err := ParsePathAndHeaders(path, nil)
 		if err == nil {
 			t.Fatalf("expecting non-nil error; got path %+v", p)
 		}

@@ -25,10 +25,12 @@ func TestClusterMultiTenantSelectViaHeaders(t *testing.T) {
 	})
 	vminsert := tc.MustStartVminsert("vminsert", []string{
 		"-storageNode=" + vmstorage.VminsertAddr(),
+		"-enableMultitenancyViaHeaders",
 	})
 	vmselect := tc.MustStartVmselect("vmselect", []string{
 		"-storageNode=" + vmstorage.VmselectAddr(),
 		"-search.tenantCacheExpireDuration=0",
+		"-enableMultitenancyViaHeaders",
 	})
 
 	multitenant := make(http.Header)

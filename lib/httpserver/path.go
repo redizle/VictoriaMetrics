@@ -18,7 +18,50 @@ type Path struct {
 	Suffix    string
 }
 
-// ParsePath parses the given path.
+// ParsePath parses the given path according to /{prefix}/{tenantID}/{suffix} format
+func ParsePath(path string) (*Path, error) {
+	// The path must have the following form:
+	// /{prefix}/{tenantID}/{suffix}
+	//
+	// - prefix must contain `select`, `insert` or `delete`.
+	// - tenantID contains `accountID[:projectID]`, where projectID is optional.
+	//   tenantID may also contain `multitenant` string. In this case the accountID and projectID
+	//   are obtained from vm_account_id and vm_project_id labels of the ingested samples.
+	// - suffix contains arbitrary suffix.
+	//
+	// prefix must be used for the routing to the appropriate service
+	// in the cluster - either vminsert or vmselect.
+	s := skipPrefixSlashes(path)
+	n := strings.IndexByte(s, '/')
+	if n < 0 {
+		return nil, fmt.Errorf("cannot find {prefix} in %q; expecting /{prefix}/{tenantID}/{suffix} format; "+
+			"see https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#url-format", path)
+	}
+	prefix := s[:n]
+
+	s = skipPrefixSlashes(s[n+1:])
+	n = strings.IndexByte(s, '/')
+	if n < 0 {
+		return nil, fmt.Errorf("cannot find {tenantID} in %q; expecting /{prefix}/{tenantID}/{suffix} format; "+
+			"see https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#url-format", path)
+	}
+	tenantID := s[:n]
+
+	s = skipPrefixSlashes(s[n+1:])
+
+	// Substitute double slashes with single slashes in the path, since such slashes
+	// may appear due improper copy-pasting of the url.
+	suffix := strings.ReplaceAll(s, "//", "/")
+
+	p := &Path{
+		Prefix:    prefix,
+		AuthToken: tenantID,
+		Suffix:    suffix,
+	}
+	return p, nil
+}
+
+// ParsePathAndHeaders parses the given path and headers.
 //
 // The path may be one of the following forms:
 //
@@ -31,7 +74,7 @@ type Path struct {
 // tenantID specified in path always takes priority over headers for backward compatibility.
 //
 // This function doesn't validate correctness of {tenantID} content.
-func ParsePath(path string, h http.Header) (*Path, error) {
+func ParsePathAndHeaders(path string, h http.Header) (*Path, error) {
 	s := skipPrefixSlashes(path)
 	n := strings.IndexByte(s, '/')
 	if n < 0 {
