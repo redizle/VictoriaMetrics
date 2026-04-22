@@ -98,7 +98,7 @@ func (app *Vmagent) getApiV1ImportPrometheusURL(o QueryOpts) string {
 
 	h := o.getHeaders()
 	if h.Get("AccountID") != "" || h.Get("ProjectID") != "" {
-		// vmagnet supports tenantID in HTTP headers only if -enableMultitenantHandlers and -enableMultitenancyViaHeaders are set
+		// vmagent supports tenantID in HTTP headers only if -enableMultitenantHandlers and -enableMultitenancyViaHeaders are set
 		// see https://docs.victoriametrics.com/vmagent/index.html#multitenancy
 		return fmt.Sprintf("http://%s/insert/prometheus/api/v1/import/prometheus", app.httpListenAddr)
 	}
