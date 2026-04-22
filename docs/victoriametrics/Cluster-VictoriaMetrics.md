@@ -107,7 +107,7 @@ When `--enableMultitenancyViaHeaders` is enabled, [URL format](#url-format) can 
 
 For example, the following query will only select metric `up` from `accountID=2` and `projectID=3`:
 ```
-curl 'https://vmselect:8481/select/prometheus/api/v1/query' \
+curl 'https://<vmselect>:8481/select/prometheus/api/v1/query' \
   -d 'query=up' \
   --header "AccountID: 2" \
   --header "ProjectID: 3"

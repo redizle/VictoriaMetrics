@@ -53,30 +53,24 @@ func TestClusterMultiTenantSelectViaHeaders(t *testing.T) {
 		`foo_bar 2.00 1652169660000`, // 2022-05-10T08:01:00Z
 		`foo_bar 3.00 1652169720000`, // 2022-05-10T08:02:00Z
 	}
-	tenantHeaders := []http.Header{
-		map[string][]string{
-			"AccountID": {"1"},
-			"ProjectID": {"1"},
-		},
-		map[string][]string{
-			"AccountID": {"1"},
-			"ProjectID": {"15"},
-		},
-		map[string][]string{
-			"AccountID": {"2"},
-		},
-		map[string][]string{
-			"ProjectID": {"3"},
-		},
+	tenantHeaders := []map[string]string{
+		{"AccountID": "1", "ProjectID": "1"},
+		{"AccountID": "1", "ProjectID": "15"},
+		{"AccountID": "2"},
+		{"ProjectID": "3"},
 	}
 	instantCT := "2022-05-10T08:05:00.000Z" // 1652169900 Unix seconds
 	for _, headers := range tenantHeaders {
-		vminsert.PrometheusAPIV1ImportPrometheus(t, samples, apptest.QueryOpts{Headers: headers})
+		h := make(http.Header)
+		for k, v := range headers {
+			h.Set(k, v)
+		}
+		vminsert.PrometheusAPIV1ImportPrometheus(t, samples, apptest.QueryOpts{Headers: h})
 		vmstorage.ForceFlush(t)
 
 		// verify tenants are searchable via tenantID in headers
 		got := vmselect.PrometheusAPIV1Query(t, "foo_bar", apptest.QueryOpts{
-			Headers: headers, Time: instantCT,
+			Headers: h, Time: instantCT,
 		})
 		want := apptest.NewPrometheusAPIV1QueryResponse(t, `{"data":{"result":[{"metric":{"__name__":"foo_bar"},"value":[1652169900,"3"]}]}}`)
 		if diff := cmp.Diff(want, got, cmpOpt); diff != "" {
