@@ -1549,3 +1549,6 @@ See changes [here](https://docs.victoriametrics.com/victoriametrics/changelog/ch
 
 See changes [here](https://docs.victoriametrics.com/victoriametrics/changelog/changelog_2020/#v1420)
 
+## Previous releases
+
+See [releases page](https://github.com/VictoriaMetrics/VictoriaMetrics/releases).
