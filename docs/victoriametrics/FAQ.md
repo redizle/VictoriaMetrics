@@ -245,7 +245,6 @@ See [How to migrate from InfluxDB to VictoriaMetrics](https://docs.victoriametri
 * VictoriaMetrics can be queried via [Graphite's API](https://docs.victoriametrics.com/victoriametrics/integrations/graphite/#graphite-api-usage).
 
 ## Does VictoriaMetrics use Prometheus technologies like other clustered TSDBs built on top of Prometheus such as [Thanos](https://github.com/thanos-io/thanos) or [Cortex](https://github.com/cortexproject/cortex)? {#does-victoriametrics-use-prometheus-technologies-like-other-clustered-tsdbs-built-on-top-of-prometheus-such-as-thanos-or-cortex-}
-}
 
 No. VictoriaMetrics core is written in Go from scratch by [fasthttp](https://github.com/valyala/fasthttp)'s [author](https://github.com/valyala).
 The architecture is [optimized for storing and querying large amounts of time series data with high cardinality](https://medium.com/devopslinks/victoriametrics-creating-the-best-remote-storage-for-prometheus-5d92d66787ac). VictoriaMetrics storage uses [certain ideas from ClickHouse](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282). Special thanks to [Alexey Milovidov](https://github.com/alexey-milovidov).
