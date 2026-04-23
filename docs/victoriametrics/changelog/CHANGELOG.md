@@ -31,7 +31,6 @@ See also [LTS releases](https://docs.victoriametrics.com/victoriametrics/lts-rel
 * FEATURE: [vmui](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#vmui): now `Run query` link on the Alerting Rules page correctly propagates the alert’s interval and evaluation time. See [#10366](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10366).
 * FEATURE: [alerts](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules): add new `MetricNameStatsCacheUtilizationIsTooHigh` alerting rule to track overutilization of [Metric names usage stats tracker](https://docs.victoriametrics.com/victoriametrics/#track-ingested-metrics-usage) (used in [Cardinality Explorer](https://docs.victoriametrics.com/victoriametrics/#cardinality-explorer)). See [#10840](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10840). 
 * FEATURE: [stream aggregation](https://docs.victoriametrics.com/victoriametrics/stream-aggregation/): add `vm_streamaggr_counter_resets_total` metric for `total*`, `increase*` and `rate*` outputs that is useful for aggregation behaviour tracking. These metrics help to identify issues described in [Troubleshooting: counter resets](https://docs.victoriametrics.com/victoriametrics/stream-aggregation/#counter-resets). 
-* FEATURE: [vmsingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) and `vmstorage` and `vmselect` in [VictoriaMetrics cluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/): add the support of ingestion and retrieval of samples with timestamps in the future. The new `-futureRetention` flag controls how far in the future the timestamps are allowed to be. See [827](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/827) and [10718](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10718).
 
 * BUGFIX: `vminsert` in [VictoriaMetrics cluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/): fix increased memory usage after upgrade to [v1.140.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.140.0) by properly accounting for internal buffer count when calculating per-storage buffer size. See [#10725](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10725#issuecomment-4282256709).
 * BUGFIX: all VictoriaMetrics components: properly parse IPv6 source address when accepting connections with proxy protocol v2 enabled. See [#10839](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10839). Thanks to @andriibeee for the contribution.
@@ -146,7 +145,7 @@ It enables back `Discovered targets` debug UI by default.
 * FEATURE: [dashboards/alert-statistics](https://grafana.com/grafana/dashboards/24553): add `job` and `instance` filters to the `VictoriaMetrics - Alert statistics` dashboard. This allows users running multiple independent [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) instances to filter and analyze alerts statistics per specific instance, making it easier to identify issues in a particular vmalert deployment. See [#10549](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10549).
 * FEATURE: [dashboards/alert-statistics](https://grafana.com/grafana/dashboards/24553): add a link to a specific alerting rule on the table of firing alerts. See [#10508](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10508). Thanks to @sias32 for the contribution.
 * FEATURE: [alerts](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules): use `$externalURL` instead of `localhost` in the alerting rules. This should improve usability of the rules if `$externalURL` is correctly configured, without need to update rules annotations. See [#10508](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10508). Thanks to @sias32 for the contribution.
-* FEATURE: all VictoriaMetrics components: publish [SPDX](https://spdx.dev/) SBOM attestations for container images on `docker.io` and `quay.io`. See [SECURITY.md](https://docs.victoriametrics.com/victoriametrics/security/) and [#10474](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10474). Thanks to @smuda for the contribution.
+* FEATURE: all VictoriaMetrics components: publish [SPDX](https://spdx.dev/) SBOM attestations for container images on `docker.io` and `quay.io`. See [SECURITY.md](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/SECURITY.md) and [#10474](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10474). Thanks to @smuda for the contribution.
 
 * BUGFIX: all VictoriaMetrics components: return gzip-compressed response instead of zstd-compressed response to the client if `Accept-Encoding` request header contains both `gzip` and `zstd`. This is needed because some clients and proxies improperly handle zstd-compressed responses. See [#10535](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10535).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/vmagent/) and [vmsingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/): properly check expired client certificate during mTLS requests. See [#10393](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10393).
@@ -155,16 +154,6 @@ It enables back `Discovered targets` debug UI by default.
 * BUGFIX: `vmstorage` in [VictoriaMetrics cluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/): properly search tenants for [multitenant](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multitenancy) query request. See [#10422](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10422).
 * BUGFIX: `vmstorage` in [VictoriaMetrics cluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/): properly apply `extra_filters[]` filter when querying `vm_account_id` or `vm_project_id` labels via [multitenant](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multitenancy) request for `/api/v1/label/…/values` API. Before, `extra_filters` was ignored. See [#10503](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10503).
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) and `vmselect` in [VictoriaMetrics cluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/): revert the use of rollup result cache for [instant queries](https://docs.victoriametrics.com/keyConcepts.html#instant-query) that contain [`rate`](https://docs.victoriametrics.com/MetricsQL.html#rate) function with a lookbehind window larger than `-search.minWindowForInstantRollupOptimization`. The cache usage was removed since [v1.132.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.132.0). See [#10098](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10098#issuecomment-3895011084) for more details.
-
-## [v1.136.5](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.136.5)
-
-Released at 2026-04-23
-
-**v1.136.x is a line of [LTS releases](https://docs.victoriametrics.com/victoriametrics/lts-releases/). It contains important up-to-date bugfixes for [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
-All these fixes are also included in [the latest community release](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/latest).
-The v1.136.x line will be supported for at least 12 months since [v1.136.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11360) release**
-
-* BUGFIX: [vmsingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) and `vmselect` in [VictoriaMetrics cluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/): fix incorrect evaluation of binary operations caused by an ordering bug (e.g. `10 - (3 + 3 + 4)` being evaluated as `10 - 3 + 3 + 4`). The issue was introduced in v1.140.0, v1.136.4, and v1.122.19. See [#10856](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10856).
 
 ## [v1.136.4](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.136.4)
 
@@ -387,16 +376,6 @@ See changes [here](https://docs.victoriametrics.com/victoriametrics/changelog/ch
 ## [v1.123.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.123.0)
 
 See changes [here](https://docs.victoriametrics.com/victoriametrics/changelog/changelog_2025/#v11230)
-
-## [v1.122.20](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.122.20)
-
-Released at 2026-04-23
-
-**v1.122.x is a line of [LTS releases](https://docs.victoriametrics.com/victoriametrics/lts-releases/). It contains important up-to-date bugfixes for [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
-All these fixes are also included in [the latest community release](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/latest).
-The v1.122.x line will be supported for at least 12 months since [v1.122.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11220) release**
-
-* BUGFIX: [vmsingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) and `vmselect` in [VictoriaMetrics cluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/): fix incorrect evaluation of binary operations caused by an ordering bug (e.g. `10 - (3 + 3 + 4)` being evaluated as `10 - 3 + 3 + 4`). The issue was introduced in v1.140.0, v1.136.4, and v1.122.19. See [#10856](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10856).
 
 ## [v1.122.19](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.122.19)
 
