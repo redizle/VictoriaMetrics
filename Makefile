@@ -1,548 +1,94 @@
-PKG_PREFIX := github.com/VictoriaMetrics/VictoriaMetrics
+# Makefile for VictoriaMetrics
 
-MAKE_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)
-MAKE_PARALLEL := $(MAKE) -j $(MAKE_CONCURRENCY)
-DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
-BUILDINFO_TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
-	      git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+APP_NAME := victoria-metrics
+VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-PKG_TAG ?= $(shell git tag -l --points-at HEAD)
-ifeq ($(PKG_TAG),)
-PKG_TAG := $(BUILDINFO_TAG)
-endif
+GO := go
+GOFLAGS := -trimpath
+LDFLAGS := -s -w \
+	-X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(VERSION) \
+	-X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.BuildTime=$(BUILD_TIME) \
+	-X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.GitCommit=$(GIT_COMMIT)
 
-EXTRA_DOCKER_TAG_SUFFIX ?=
-EXTRA_GO_BUILD_TAGS ?=
+DOCKER_IMAGE := victoriametrics/victoria-metrics
+DOCKER_TAG ?= $(VERSION)
 
-GO_BUILDINFO = -X '$(PKG_PREFIX)/lib/buildinfo.Version=$(APP_NAME)-$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
-TAR_OWNERSHIP ?= --owner=1000 --group=1000
+.PHONY: all build clean test lint fmt docker docker-push help
 
-GOLANGCI_LINT_VERSION := 2.9.0
+## all: build the application
+all: build
 
-.PHONY: $(MAKECMDGOALS)
+## build: compile the application binary
+build:
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/$(APP_NAME) ./app/victoria-metrics
 
-include app/*/Makefile
-include codespell/Makefile
-include docs/Makefile
-include deployment/*/Makefile
-include dashboards/Makefile
-include package/release/Makefile
-include benchmarks/Makefile
+## build-all: compile all application binaries
+build-all:
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/victoria-metrics ./app/victoria-metrics
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/vmagent ./app/vmagent
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/vmalert ./app/vmalert
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/vmauth ./app/vmauth
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/vmbackup ./app/vmbackup
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/vmrestore ./app/vmrestore
 
-all: \
-	victoria-metrics-prod \
-	vmagent-prod \
-	vmalert-prod \
-	vmalert-tool-prod \
-	vmauth-prod \
-	vmbackup-prod \
-	vmrestore-prod \
-	vmctl-prod
-
-clean:
-	rm -rf bin/*
-
-publish: \
-	publish-victoria-metrics \
-	publish-vmagent \
-	publish-vmalert \
-	publish-vmalert-tool \
-	publish-vmauth \
-	publish-vmbackup \
-	publish-vmrestore \
-	publish-vmctl
-
-package: \
-	package-victoria-metrics \
-	package-vmagent \
-	package-vmalert \
-	package-vmalert-tool \
-	package-vmauth \
-	package-vmbackup \
-	package-vmrestore \
-	package-vmctl
-
-vmutils: \
-	vmagent \
-	vmalert \
-	vmalert-tool \
-	vmauth \
-	vmbackup \
-	vmrestore \
-	vmctl
-
-vmutils-pure: \
-	vmagent-pure \
-	vmalert-pure \
-	vmalert-tool-pure \
-	vmauth-pure \
-	vmbackup-pure \
-	vmrestore-pure \
-	vmctl-pure
-
-vmutils-linux-amd64: \
-	vmagent-linux-amd64 \
-	vmalert-linux-amd64 \
-	vmalert-tool-linux-amd64 \
-	vmauth-linux-amd64 \
-	vmbackup-linux-amd64 \
-	vmrestore-linux-amd64 \
-	vmctl-linux-amd64
-
-vmutils-linux-arm64: \
-	vmagent-linux-arm64 \
-	vmalert-linux-arm64 \
-	vmalert-tool-linux-arm64 \
-	vmauth-linux-arm64 \
-	vmbackup-linux-arm64 \
-	vmrestore-linux-arm64 \
-	vmctl-linux-arm64
-
-vmutils-linux-arm: \
-	vmagent-linux-arm \
-	vmalert-linux-arm \
-	vmalert-tool-linux-arm \
-	vmauth-linux-arm \
-	vmbackup-linux-arm \
-	vmrestore-linux-arm \
-	vmctl-linux-arm
-
-vmutils-linux-386: \
-	vmagent-linux-386 \
-	vmalert-linux-386 \
-	vmalert-tool-linux-386 \
-	vmauth-linux-386 \
-	vmbackup-linux-386 \
-	vmrestore-linux-386 \
-	vmctl-linux-386
-
-vmutils-linux-ppc64le: \
-	vmagent-linux-ppc64le \
-	vmalert-linux-ppc64le \
-	vmalert-tool-linux-ppc64le \
-	vmauth-linux-ppc64le \
-	vmbackup-linux-ppc64le \
-	vmrestore-linux-ppc64le \
-	vmctl-linux-ppc64le
-
-vmutils-linux-s390x: \
-	vmagent-linux-s390x \
-	vmalert-linux-s390x \
-	vmalert-tool-linux-s390x \
-	vmauth-linux-s390x \
-	vmbackup-linux-s390x \
-	vmrestore-linux-s390x \
-	vmctl-linux-s390x
-
-vmutils-darwin-amd64: \
-	vmagent-darwin-amd64 \
-	vmalert-darwin-amd64 \
-	vmalert-tool-darwin-amd64 \
-	vmauth-darwin-amd64 \
-	vmbackup-darwin-amd64 \
-	vmrestore-darwin-amd64 \
-	vmctl-darwin-amd64
-
-vmutils-darwin-arm64: \
-	vmagent-darwin-arm64 \
-	vmalert-darwin-arm64 \
-	vmalert-tool-darwin-arm64 \
-	vmauth-darwin-arm64 \
-	vmbackup-darwin-arm64 \
-	vmrestore-darwin-arm64 \
-	vmctl-darwin-arm64
-
-vmutils-freebsd-amd64: \
-	vmagent-freebsd-amd64 \
-	vmalert-freebsd-amd64 \
-	vmalert-tool-freebsd-amd64 \
-	vmauth-freebsd-amd64 \
-	vmbackup-freebsd-amd64 \
-	vmrestore-freebsd-amd64 \
-	vmctl-freebsd-amd64
-
-vmutils-openbsd-amd64: \
-	vmagent-openbsd-amd64 \
-	vmalert-openbsd-amd64 \
-	vmalert-tool-openbsd-amd64 \
-	vmauth-openbsd-amd64 \
-	vmbackup-openbsd-amd64 \
-	vmrestore-openbsd-amd64 \
-	vmctl-openbsd-amd64
-
-vmutils-windows-amd64: \
-	vmagent-windows-amd64 \
-	vmalert-windows-amd64 \
-	vmalert-tool-windows-amd64 \
-	vmauth-windows-amd64 \
-	vmbackup-windows-amd64 \
-	vmrestore-windows-amd64 \
-	vmctl-windows-amd64
-
-# When adding a new crossbuild target, please also add it to the .github/workflows/build.yml
-crossbuild:
-	$(MAKE_PARALLEL) victoria-metrics-crossbuild vmutils-crossbuild
-
-# When adding a new crossbuild target, please also add it to the .github/workflows/build.yml
-victoria-metrics-crossbuild: \
-	victoria-metrics-linux-386 \
-	victoria-metrics-linux-amd64 \
-	victoria-metrics-linux-arm64 \
-	victoria-metrics-linux-arm \
-	victoria-metrics-linux-ppc64le \
-	victoria-metrics-darwin-amd64 \
-	victoria-metrics-darwin-arm64 \
-	victoria-metrics-freebsd-amd64 \
-	victoria-metrics-openbsd-amd64 \
-	victoria-metrics-windows-amd64
-
-# When adding a new crossbuild target, please also add it to the .github/workflows/build.yml
-vmutils-crossbuild: \
-	vmutils-linux-386 \
-	vmutils-linux-amd64 \
-	vmutils-linux-arm64 \
-	vmutils-linux-arm \
-	vmutils-linux-ppc64le \
-	vmutils-darwin-amd64 \
-	vmutils-darwin-arm64 \
-	vmutils-freebsd-amd64 \
-	vmutils-openbsd-amd64 \
-	vmutils-windows-amd64
-
-publish-final-images:
-	PKG_TAG=$(TAG) APP_NAME=victoria-metrics $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vmagent $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vmalert $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vmalert-tool $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vmauth $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vmbackup $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vmrestore $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vmctl $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-cluster APP_NAME=vminsert $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-cluster APP_NAME=vmselect $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-cluster APP_NAME=vmstorage $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=victoria-metrics $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmagent $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmalert $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmauth $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmbackup $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmrestore $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise-cluster APP_NAME=vminsert $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise-cluster APP_NAME=vmselect $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise-cluster APP_NAME=vmstorage $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmgateway $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmbackupmanager $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) $(MAKE) publish-latest
-
-publish-latest:
-	PKG_TAG=$(TAG) APP_NAME=victoria-metrics $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG) APP_NAME=vmagent $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG) APP_NAME=vmalert $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG) APP_NAME=vmalert-tool $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG) APP_NAME=vmauth $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG) APP_NAME=vmbackup $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG) APP_NAME=vmrestore $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG) APP_NAME=vmctl $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG)-cluster APP_NAME=vminsert $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG)-cluster APP_NAME=vmselect $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG)-cluster APP_NAME=vmstorage $(MAKE) publish-via-docker-latest && \
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmgateway $(MAKE) publish-via-docker-latest
-	PKG_TAG=$(TAG)-enterprise APP_NAME=vmbackupmanager $(MAKE) publish-via-docker-latest
-
-publish-release:
-	rm -rf bin/*
-	git checkout $(TAG) && $(MAKE) release && $(MAKE) publish && \
-		git checkout $(TAG)-cluster && $(MAKE) release && $(MAKE) publish && \
-		git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish && \
-		git checkout $(TAG)-enterprise-cluster && $(MAKE) release && $(MAKE) publish
-
-release:
-	$(MAKE_PARALLEL) \
-		release-victoria-metrics \
-		release-vmutils
-
-release-victoria-metrics: \
-	release-victoria-metrics-linux-386 \
-	release-victoria-metrics-linux-amd64 \
-	release-victoria-metrics-linux-arm \
-	release-victoria-metrics-linux-arm64 \
-	release-victoria-metrics-linux-s390x \
-	release-victoria-metrics-darwin-amd64 \
-	release-victoria-metrics-darwin-arm64 \
-	release-victoria-metrics-freebsd-amd64 \
-	release-victoria-metrics-openbsd-amd64 \
-	release-victoria-metrics-windows-amd64
-
-release-victoria-metrics-linux-386:
-	GOOS=linux GOARCH=386 $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-linux-amd64:
-	GOOS=linux GOARCH=amd64 $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-linux-arm:
-	GOOS=linux GOARCH=arm $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-linux-arm64:
-	GOOS=linux GOARCH=arm64 $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-linux-s390x:
-	GOOS=linux GOARCH=s390x $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-darwin-arm64:
-	GOOS=darwin GOARCH=arm64 $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-freebsd-amd64:
-	GOOS=freebsd GOARCH=amd64 $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-openbsd-amd64:
-	GOOS=openbsd GOARCH=amd64 $(MAKE) release-victoria-metrics-goos-goarch
-
-release-victoria-metrics-windows-amd64:
-	GOARCH=amd64 $(MAKE) release-victoria-metrics-windows-goarch
-
-release-victoria-metrics-goos-goarch: victoria-metrics-$(GOOS)-$(GOARCH)-prod
-	cd bin && \
-		tar $(TAR_OWNERSHIP) --transform="flags=r;s|-$(GOOS)-$(GOARCH)||" -czf victoria-metrics-$(GOOS)-$(GOARCH)-$(PKG_TAG).tar.gz \
-			victoria-metrics-$(GOOS)-$(GOARCH)-prod \
-		&& sha256sum victoria-metrics-$(GOOS)-$(GOARCH)-$(PKG_TAG).tar.gz \
-			victoria-metrics-$(GOOS)-$(GOARCH)-prod \
-			| sed s/-$(GOOS)-$(GOARCH)-prod/-prod/ > victoria-metrics-$(GOOS)-$(GOARCH)-$(PKG_TAG)_checksums.txt
-	cd bin && rm -rf victoria-metrics-$(GOOS)-$(GOARCH)-prod
-
-release-victoria-metrics-windows-goarch: victoria-metrics-windows-$(GOARCH)-prod
-	cd bin && \
-		zip victoria-metrics-windows-$(GOARCH)-$(PKG_TAG).zip \
-			victoria-metrics-windows-$(GOARCH)-prod.exe \
-		&& sha256sum victoria-metrics-windows-$(GOARCH)-$(PKG_TAG).zip \
-			victoria-metrics-windows-$(GOARCH)-prod.exe \
-			> victoria-metrics-windows-$(GOARCH)-$(PKG_TAG)_checksums.txt
-	cd bin && rm -rf \
-		victoria-metrics-windows-$(GOARCH)-prod.exe
-
-release-vmutils: \
-	release-vmutils-linux-386 \
-	release-vmutils-linux-amd64 \
-	release-vmutils-linux-arm64 \
-	release-vmutils-linux-arm \
-	release-vmutils-linux-s390x \
-	release-vmutils-darwin-amd64 \
-	release-vmutils-darwin-arm64 \
-	release-vmutils-freebsd-amd64 \
-	release-vmutils-openbsd-amd64 \
-	release-vmutils-windows-amd64
-
-release-vmutils-linux-386:
-	GOOS=linux GOARCH=386 $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-linux-amd64:
-	GOOS=linux GOARCH=amd64 $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-linux-arm64:
-	GOOS=linux GOARCH=arm64 $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-linux-arm:
-	GOOS=linux GOARCH=arm $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-linux-s390x:
-	GOOS=linux GOARCH=s390x $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-darwin-arm64:
-	GOOS=darwin GOARCH=arm64 $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-freebsd-amd64:
-	GOOS=freebsd GOARCH=amd64 $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-openbsd-amd64:
-	GOOS=openbsd GOARCH=amd64 $(MAKE) release-vmutils-goos-goarch
-
-release-vmutils-windows-amd64:
-	GOARCH=amd64 $(MAKE) release-vmutils-windows-goarch
-
-release-vmutils-goos-goarch: \
-	vmagent-$(GOOS)-$(GOARCH)-prod \
-	vmalert-$(GOOS)-$(GOARCH)-prod \
-	vmalert-tool-$(GOOS)-$(GOARCH)-prod \
-	vmauth-$(GOOS)-$(GOARCH)-prod \
-	vmbackup-$(GOOS)-$(GOARCH)-prod \
-	vmrestore-$(GOOS)-$(GOARCH)-prod \
-	vmctl-$(GOOS)-$(GOARCH)-prod
-	cd bin && \
-		tar $(TAR_OWNERSHIP) --transform="flags=r;s|-$(GOOS)-$(GOARCH)||" -czf vmutils-$(GOOS)-$(GOARCH)-$(PKG_TAG).tar.gz \
-			vmagent-$(GOOS)-$(GOARCH)-prod \
-			vmalert-$(GOOS)-$(GOARCH)-prod \
-			vmalert-tool-$(GOOS)-$(GOARCH)-prod \
-			vmauth-$(GOOS)-$(GOARCH)-prod \
-			vmbackup-$(GOOS)-$(GOARCH)-prod \
-			vmrestore-$(GOOS)-$(GOARCH)-prod \
-			vmctl-$(GOOS)-$(GOARCH)-prod \
-		&& sha256sum vmutils-$(GOOS)-$(GOARCH)-$(PKG_TAG).tar.gz \
-			vmagent-$(GOOS)-$(GOARCH)-prod \
-			vmalert-$(GOOS)-$(GOARCH)-prod \
-			vmalert-tool-$(GOOS)-$(GOARCH)-prod \
-			vmauth-$(GOOS)-$(GOARCH)-prod \
-			vmbackup-$(GOOS)-$(GOARCH)-prod \
-			vmrestore-$(GOOS)-$(GOARCH)-prod \
-			vmctl-$(GOOS)-$(GOARCH)-prod \
-			| sed s/-$(GOOS)-$(GOARCH)-prod/-prod/ > vmutils-$(GOOS)-$(GOARCH)-$(PKG_TAG)_checksums.txt
-	cd bin && rm -rf \
-		vmagent-$(GOOS)-$(GOARCH)-prod \
-		vmalert-$(GOOS)-$(GOARCH)-prod \
-		vmalert-tool-$(GOOS)-$(GOARCH)-prod \
-		vmauth-$(GOOS)-$(GOARCH)-prod \
-		vmbackup-$(GOOS)-$(GOARCH)-prod \
-		vmrestore-$(GOOS)-$(GOARCH)-prod \
-		vmctl-$(GOOS)-$(GOARCH)-prod
-
-release-vmutils-windows-goarch: \
-	vmagent-windows-$(GOARCH)-prod \
-	vmalert-windows-$(GOARCH)-prod \
-	vmalert-tool-windows-$(GOARCH)-prod \
-	vmauth-windows-$(GOARCH)-prod \
-	vmbackup-windows-$(GOARCH)-prod \
-	vmrestore-windows-$(GOARCH)-prod \
-	vmctl-windows-$(GOARCH)-prod
-	cd bin && \
-		zip vmutils-windows-$(GOARCH)-$(PKG_TAG).zip \
-			vmagent-windows-$(GOARCH)-prod.exe \
-			vmalert-windows-$(GOARCH)-prod.exe \
-			vmalert-tool-windows-$(GOARCH)-prod.exe \
-			vmauth-windows-$(GOARCH)-prod.exe \
-			vmbackup-windows-$(GOARCH)-prod.exe \
-			vmrestore-windows-$(GOARCH)-prod.exe \
-			vmctl-windows-$(GOARCH)-prod.exe \
-		&& sha256sum vmutils-windows-$(GOARCH)-$(PKG_TAG).zip \
-			vmagent-windows-$(GOARCH)-prod.exe \
-			vmalert-windows-$(GOARCH)-prod.exe \
-			vmalert-tool-windows-$(GOARCH)-prod.exe \
-			vmauth-windows-$(GOARCH)-prod.exe \
-			vmbackup-windows-$(GOARCH)-prod.exe \
-			vmrestore-windows-$(GOARCH)-prod.exe \
-			vmctl-windows-$(GOARCH)-prod.exe \
-			> vmutils-windows-$(GOARCH)-$(PKG_TAG)_checksums.txt
-	cd bin && rm -rf \
-		vmagent-windows-$(GOARCH)-prod.exe \
-		vmalert-windows-$(GOARCH)-prod.exe \
-		vmalert-tool-windows-$(GOARCH)-prod.exe \
-		vmauth-windows-$(GOARCH)-prod.exe \
-		vmbackup-windows-$(GOARCH)-prod.exe \
-		vmrestore-windows-$(GOARCH)-prod.exe \
-		vmctl-windows-$(GOARCH)-prod.exe
-
-pprof-cpu:
-	go tool pprof -trim_path=github.com/VictoriaMetrics/VictoriaMetrics $(PPROF_FILE)
-
-fmt:
-	gofmt -l -w -s ./lib
-	gofmt -l -w -s ./app
-	gofmt -l -w -s ./apptest
-
-vet:
-	go vet -tags 'synctest' ./lib/...
-	go vet ./app/...
-	go vet ./apptest/...
-
-check-all: fmt vet golangci-lint govulncheck
-
-clean-checkers: remove-golangci-lint remove-govulncheck
-
+## test: run all unit tests
 test:
-	go test -tags 'synctest' ./lib/... ./app/...
+	$(GO) test ./... -count=1 -race -timeout 120s
 
-test-race:
-	go test -tags 'synctest' -race ./lib/... ./app/...
+## test-short: run short unit tests
+test-short:
+	$(GO) test ./... -short -count=1 -timeout 60s
 
-test-386:
-	GOARCH=386 go test -tags 'synctest' ./lib/... ./app/...
+## bench: run benchmarks
+bench:
+	$(GO) test ./... -bench=. -benchmem -run='^$$' -timeout 300s
 
-test-pure:
-	CGO_ENABLED=0 go test -tags 'synctest' ./lib/... ./app/...
+## lint: run golangci-lint
+lint:
+	golangci-lint run ./...
 
-test-full:
-	go test -tags 'synctest' -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
+## fmt: format Go source code
+fmt:
+	$(GO) fmt ./...
+	goimports -w .
 
-test-full-386:
-	GOARCH=386 go test -tags 'synctest' -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
+## vet: run go vet
+vet:
+	$(GO) vet ./...
 
-apptest:
-	$(MAKE) victoria-metrics-race vmagent-race vmalert-race vmauth-race vmctl-race vmbackup-race vmrestore-race
-	go test ./apptest/... -skip="^Test(Cluster|Legacy).*"
+## clean: remove build artifacts
+clean:
+	rm -rf bin/
+	$(GO) clean -cache
 
-apptest-legacy: victoria-metrics-race vmbackup-race vmrestore-race
-	OS=$$(uname | tr '[:upper:]' '[:lower:]'); \
-	ARCH=$$(uname -m | tr '[:upper:]' '[:lower:]' | sed 's/x86_64/amd64/'); \
-	VERSION=v1.132.0; \
-	VMSINGLE=victoria-metrics-$${OS}-$${ARCH}-$${VERSION}.tar.gz; \
-	VMCLUSTER=victoria-metrics-$${OS}-$${ARCH}-$${VERSION}-cluster.tar.gz; \
-	URL=https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/$${VERSION}; \
-	DIR=/tmp/$${VERSION}; \
-	test -d $${DIR} || (mkdir $${DIR} && \
-		curl --output-dir /tmp -LO $${URL}/$${VMSINGLE} && tar xzf /tmp/$${VMSINGLE} -C $${DIR} && \
-		curl --output-dir /tmp -LO $${URL}/$${VMCLUSTER} && tar xzf /tmp/$${VMCLUSTER} -C $${DIR} \
-	); \
-	VM_LEGACY_VMSINGLE_PATH=$${DIR}/victoria-metrics-prod \
-	VM_LEGACY_VMSTORAGE_PATH=$${DIR}/vmstorage-prod \
-	go test ./apptest/tests -run="^TestLegacySingle.*"
+## docker: build Docker image
+docker:
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
+		-t $(DOCKER_IMAGE):$(DOCKER_TAG) \
+		-t $(DOCKER_IMAGE):latest \
+		.
 
-benchmark:
-	go test -run=NO_TESTS -bench=. ./lib/...
-	go test -run=NO_TESTS -bench=. ./app/...
+## docker-push: push Docker image to registry
+docker-push: docker
+	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker push $(DOCKER_IMAGE):latest
 
-benchmark-pure:
-	CGO_ENABLED=0 go test -run=NO_TESTS -bench=. ./lib/...
-	CGO_ENABLED=0 go test -run=NO_TESTS -bench=. ./app/...
+## mod-tidy: tidy Go modules
+mod-tidy:
+	$(GO) mod tidy
 
-vendor-update:
-	go get -u ./lib/...
-	go get -u ./app/...
-	go mod tidy -compat=1.26
-	go mod vendor
+## mod-download: download Go modules
+mod-download:
+	$(GO) mod download
 
-app-local:
-	CGO_ENABLED=1 go build $(RACE) -ldflags "$(GO_BUILDINFO)" -tags "$(EXTRA_GO_BUILD_TAGS)" -o bin/$(APP_NAME)$(RACE) $(PKG_PREFIX)/app/$(APP_NAME)
-
-app-local-pure:
-	CGO_ENABLED=0 go build $(RACE) -ldflags "$(GO_BUILDINFO)" -tags "$(EXTRA_GO_BUILD_TAGS)" -o bin/$(APP_NAME)-pure$(RACE) $(PKG_PREFIX)/app/$(APP_NAME)
-
-app-local-goos-goarch:
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(RACE) -ldflags "$(GO_BUILDINFO)" -tags "$(EXTRA_GO_BUILD_TAGS)" -o bin/$(APP_NAME)-$(GOOS)-$(GOARCH)$(RACE) $(PKG_PREFIX)/app/$(APP_NAME)
-
-app-local-windows-goarch:
-	CGO_ENABLED=0 GOOS=windows GOARCH=$(GOARCH) go build $(RACE) -ldflags "$(GO_BUILDINFO)" -tags "$(EXTRA_GO_BUILD_TAGS)" -o bin/$(APP_NAME)-windows-$(GOARCH)$(RACE).exe $(PKG_PREFIX)/app/$(APP_NAME)
-
-quicktemplate-gen: install-qtc
-	qtc -dir=lib
-	qtc -dir=app
-
-install-qtc:
-	which qtc || go install github.com/valyala/quicktemplate/qtc@latest
-
-
-golangci-lint: install-golangci-lint
-	golangci-lint run --build-tags 'synctest'
-
-install-golangci-lint:
-	which golangci-lint && (golangci-lint --version | grep -q $(GOLANGCI_LINT_VERSION)) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v$(GOLANGCI_LINT_VERSION)
-
-remove-golangci-lint:
-	rm -rf `which golangci-lint`
-
-govulncheck: install-govulncheck
-	govulncheck ./...
-
-install-govulncheck:
-	which govulncheck || go install golang.org/x/vuln/cmd/govulncheck@latest
-
-remove-govulncheck:
-	rm -rf `which govulncheck`
-
-install-wwhrd:
-	which wwhrd || go install github.com/frapposelli/wwhrd@latest
-
-check-licenses: install-wwhrd
-	wwhrd check -f .wwhrd.yml
+## help: display this help message
+help:
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@grep -E '^## ' Makefile | sed 's/## /  /'
