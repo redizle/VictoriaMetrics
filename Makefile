@@ -59,9 +59,10 @@ vet:
 	$(GO) vet ./...
 
 ## clean: remove build artifacts
+# also cleans test cache which is useful when tests behave unexpectedly
 clean:
 	rm -rf bin/
-	$(GO) clean -cache
+	$(GO) clean -cache -testcache
 
 ## docker: build Docker image
 docker:
