@@ -96,4 +96,4 @@ help:
 
 ## test-verbose: run tests with verbose output (handy for debugging)
 test-verbose:
-	$(GO) test ./... -v -count=1 -timeout 120s
+	$(GO) test ./... -v -count=1 -race -timeout 120s
