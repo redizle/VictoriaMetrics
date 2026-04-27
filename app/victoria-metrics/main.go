@@ -15,7 +15,8 @@ var (
 	httpListenAddr = flag.String("httpListenAddr", ":8428", "TCP address to listen for HTTP connections")
 
 	// retentionPeriod is the data retention period in months.
-	retentionPeriod = flag.Int("retentionPeriod", 1, "Retention period in months")
+	// Bumped default from 1 to 3 months - 1 month is way too short for my use case
+	retentionPeriod = flag.Int("retentionPeriod", 3, "Retention period in months")
 
 	// storageDataPath is the path to storage data directory.
 	storageDataPath = flag.String("storageDataPath", "victoria-metrics-data", "Path to storage data directory")
@@ -95,7 +96,4 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 
 // initLogger initializes the global logger with the given log level.
 func initLogger(level string) {
-	// Logger initialization placeholder — to be wired with actual
-	// logging library (e.g., zap or VictoriaMetrics logger package).
-	_ = level
-}
+	// Logger initialization placeholder — to be
