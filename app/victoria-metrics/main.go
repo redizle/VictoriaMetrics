@@ -45,11 +45,13 @@ func main() {
 	}
 
 	// Set up HTTP server.
+	// Bumped timeouts from 60s to 120s - remote write from my slower nodes
+	// occasionally times out under heavy load with the default 60s.
 	s := &fasthttp.Server{
 		Handler:            requestHandler,
 		Name:               "VictoriaMetrics",
-		ReadTimeout:        60 * time.Second,
-		WriteTimeout:       60 * time.Second,
+		ReadTimeout:        120 * time.Second,
+		WriteTimeout:       120 * time.Second,
 		MaxRequestBodySize: *maxInsertRequestSize,
 	}
 
@@ -94,6 +96,4 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-// initLogger initializes the global logger with the given log level.
-func initLogger(level string) {
-	// Logger initialization placeholder — to be
+// initLogger initializes the global logger with the given log lev
