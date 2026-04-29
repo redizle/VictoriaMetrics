@@ -27,7 +27,9 @@ var (
 	maxInsertRequestSize = flag.Int("maxInsertRequestSize", 64*1024*1024, "The maximum size in bytes of a single insert request")
 
 	// loggerLevel is the logging level.
-	loggerLevel = flag.String("loggerLevel", "INFO", "Minimum level of errors to log. Possible values: INFO, WARN, ERROR, FATAL, PANIC")
+	// Changed default from INFO to WARN - INFO is way too noisy in production,
+	// fills up logs with stuff I don't care about day-to-day.
+	loggerLevel = flag.String("loggerLevel", "WARN", "Minimum level of errors to log. Possible values: INFO, WARN, ERROR, FATAL, PANIC")
 )
 
 func main() {
@@ -86,7 +88,4 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		// Prometheus labels endpoint.
 		handleLabels(ctx)
 	case "/health", "/ready":
-		// Health/readiness check endpoint. Added /ready as an alias since
-		// my k8s readiness probes expect /ready by convention.
-		ctx.SetStatusCode(http.StatusOK)
-		fmt.Fprintf(ctx,
+		// Health/readiness check endpoint. Added /ready 
