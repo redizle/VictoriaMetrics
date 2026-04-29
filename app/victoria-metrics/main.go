@@ -51,12 +51,15 @@ func main() {
 	// Set up HTTP server.
 	// Bumped timeouts from 60s to 120s - remote write from my slower nodes
 	// occasionally times out under heavy load with the default 60s.
+	// Also bumped MaxConnsPerIP from default - I have a few high-frequency
+	// scrapers hitting the same endpoint and was seeing connection rejections.
 	s := &fasthttp.Server{
 		Handler:            requestHandler,
 		Name:               "VictoriaMetrics",
 		ReadTimeout:        120 * time.Second,
 		WriteTimeout:       120 * time.Second,
 		MaxRequestBodySize: *maxInsertRequestSize,
+		MaxConnsPerIP:      512,
 	}
 
 	// Start listening.
@@ -84,8 +87,4 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	case "/api/v1/series":
 		// Prometheus series endpoint.
 		handleSeries(ctx)
-	case "/api/v1/labels":
-		// Prometheus labels endpoint.
-		handleLabels(ctx)
-	case "/health", "/ready":
-		// Health/readiness check endpoint. Added /ready 
+	case "/api/v1/lab
