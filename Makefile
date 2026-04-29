@@ -97,3 +97,10 @@ help:
 ## test-verbose: run tests with verbose output (handy for debugging)
 test-verbose:
 	$(GO) test ./... -v -count=1 -race -timeout 120s
+
+## test-cover: run tests with coverage report
+# outputs coverage to cover.out and opens an html report - useful when exploring unfamiliar code
+test-cover:
+	$(GO) test ./... -count=1 -coverprofile=cover.out -timeout 120s
+	$(GO) tool cover -html=cover.out -o cover.html
+	@echo "Coverage report written to cover.html"
