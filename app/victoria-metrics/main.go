@@ -83,17 +83,13 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	case "/api/v1/labels":
 		// Prometheus labels endpoint.
 		handleLabels(ctx)
-	case "/health":
-		// Health check endpoint.
+	case "/health", "/ready":
+		// Health/readiness check endpoint. Added /ready as an alias since
+		// my k8s readiness probes expect /ready by convention.
 		ctx.SetStatusCode(http.StatusOK)
 		fmt.Fprintf(ctx, "OK")
 	case "/metrics":
 		// Internal metrics endpoint.
 		handleMetrics(ctx)
 	default:
-		ctx.SetStatusCode(http.StatusNotFound)
-		fmt.Fprintf(ctx, "Unsupported path: %s", path)
-	}
-}
-
-// initLogger initializes the global logger with the given log lev
+		ctx.SetStatusCode(h
