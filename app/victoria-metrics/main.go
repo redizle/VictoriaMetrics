@@ -22,7 +22,9 @@ var (
 	storageDataPath = flag.String("storageDataPath", "victoria-metrics-data", "Path to storage data directory")
 
 	// maxInsertRequestSize is the maximum size of a single insert request.
-	maxInsertRequestSize = flag.Int("maxInsertRequestSize", 32*1024*1024, "The maximum size in bytes of a single insert request")
+	// Bumped from 32MB to 64MB - some of my batch writes from the aggregator
+	// were getting rejected when flushing large chunks.
+	maxInsertRequestSize = flag.Int("maxInsertRequestSize", 64*1024*1024, "The maximum size in bytes of a single insert request")
 
 	// loggerLevel is the logging level.
 	loggerLevel = flag.String("loggerLevel", "INFO", "Minimum level of errors to log. Possible values: INFO, WARN, ERROR, FATAL, PANIC")
@@ -87,9 +89,4 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		// Health/readiness check endpoint. Added /ready as an alias since
 		// my k8s readiness probes expect /ready by convention.
 		ctx.SetStatusCode(http.StatusOK)
-		fmt.Fprintf(ctx, "OK")
-	case "/metrics":
-		// Internal metrics endpoint.
-		handleMetrics(ctx)
-	default:
-		ctx.SetStatusCode(h
+		fmt.Fprintf(ctx,
