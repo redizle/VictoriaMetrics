@@ -101,6 +101,6 @@ test-verbose:
 ## test-cover: run tests with coverage report
 # outputs coverage to cover.out and opens an html report - useful when exploring unfamiliar code
 test-cover:
-	$(GO) test ./... -count=1 -coverprofile=cover.out -timeout 120s
+	$(GO) test ./... -coverprofile=cover.out -covermode=atomic ./...
 	$(GO) tool cover -html=cover.out -o cover.html
 	@echo "Coverage report written to cover.html"
