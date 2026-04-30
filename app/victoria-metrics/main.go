@@ -53,13 +53,15 @@ func main() {
 	// occasionally times out under heavy load with the default 60s.
 	// Also bumped MaxConnsPerIP from default - I have a few high-frequency
 	// scrapers hitting the same endpoint and was seeing connection rejections.
+	// Bumped MaxConnsPerIP further to 1024 - 512 wasn't enough when all my
+	// home lab nodes flush metrics simultaneously at the top of the minute.
 	s := &fasthttp.Server{
 		Handler:            requestHandler,
 		Name:               "VictoriaMetrics",
 		ReadTimeout:        120 * time.Second,
 		WriteTimeout:       120 * time.Second,
 		MaxRequestBodySize: *maxInsertRequestSize,
-		MaxConnsPerIP:      512,
+		MaxConnsPerIP:      1024,
 	}
 
 	// Start listening.
@@ -81,10 +83,4 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	case "/api/v1/query":
 		// Prometheus instant query endpoint.
 		handleQuery(ctx)
-	case "/api/v1/query_range":
-		// Prometheus range query endpoint.
-		handleQueryRange(ctx)
-	case "/api/v1/series":
-		// Prometheus series endpoint.
-		handleSeries(ctx)
-	case "/api/v1/lab
+	case "/a
